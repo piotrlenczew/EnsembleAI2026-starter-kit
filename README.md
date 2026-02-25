@@ -1,12 +1,12 @@
-# Context Collection Competition Starter Kit
+# JetBrains Challenge Starter Kit
 
-Welcome to the starter kit for the [Context Collection Competition](https://jb.gg/co4). 
+Welcome to the starter kit for the JetBrains Challenge at the [EnsembleAI Hackathon 2026](https://ensembleaihackathon.pl/#/2026#about)! 
 It will guide you from the moment of downloading data to running a baseline solution and making your first submission.
 Please feel free to fork the starter kit to use it as the starting point for your solutions.
 
 ### Objective
 The objective of the competition is to implement a context collection strategy that yields the most accurate code completions when provided to LLMs.
-Please read the [competition page](https://jb.gg/co4) for details.
+Please read the [challenge description](https://jb.gg/uair6w) for details.
 
 ## Getting Started 
 
@@ -72,9 +72,9 @@ Both `prefix` and `suffix` are optional in each entry: it is acceptable if each 
 
 ### Submitting your solution
 
-Go to the [competition page](https://eval.ai/web/challenges/challenge-page/2516), enter the competition, select the stage, and upload the generated prediction file.
+Go to the competition page, enter the competition, select the stage, and upload the generated prediction file.
 
 ### Evaluation
 The contexts are used to generate completions with three different models based on their similarity to the reference text with the ChrF score metric. 
 The final score is the average across the scores of the three models.
-Please read the [Evaluation](https://eval.ai/web/challenges/challenge-page/2516/evaluation) section of the competition page for details.
+Please read the [Evaluation](https://jb.gg/uair6w) section of the competition page for details.
