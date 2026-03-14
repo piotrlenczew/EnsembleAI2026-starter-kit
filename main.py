@@ -78,7 +78,7 @@ with jsonlines.open(completion_points_file, 'r') as reader:
                     datapoint['suffix'],
                     extension
                 )
-            if strategy == "chunk":
+            elif strategy == "chunk":
                 chunks = chunk_retrieve_with_rerank(
                     root_directory,
                     datapoint['prefix'],
