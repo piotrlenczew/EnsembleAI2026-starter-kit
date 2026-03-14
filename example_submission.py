@@ -14,8 +14,8 @@ ENDPOINT = "task2"
 API_TOKEN = os.getenv("TEAM_TOKEN")
 SERVER_URL = os.getenv("SERVER_URL")
 # Change accordingly
-JSONL_FILE = "predictions/python-practice-rerank.jsonl"
-STAGE = "practice"
+JSONL_FILE = "predictions/python-test-rerank.jsonl"
+STAGE = "public"
 
 def main():
     if not API_TOKEN:
