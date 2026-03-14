@@ -14,7 +14,7 @@ ENDPOINT = "task2"
 API_TOKEN = os.getenv("TEAM_TOKEN")
 SERVER_URL = os.getenv("SERVER_URL")
 # Change accordingly
-JSONL_FILE = "predictions/python-test-rerank.jsonl"
+JSONL_FILE = "predictions/python-public-rerank.jsonl"
 STAGE = "public"
 
 def main():
