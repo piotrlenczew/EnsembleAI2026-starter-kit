@@ -5,8 +5,8 @@ import argparse
 
 from rank_bm25 import BM25Okapi
 
-from bm25_chunk import find_bm25_chunk
 from bm25_dense_reranker import retrieve_with_rerank
+from chunking_bm25_dense_reranker import chunk_retrieve_with_rerank
 
 argparser = argparse.ArgumentParser()
 # Parameters for context collection strategy
@@ -73,6 +73,13 @@ with jsonlines.open(completion_points_file, 'r') as reader:
             # Run the baseline strategy
             if strategy == "rerank":
                 chunks = retrieve_with_rerank(
+                    root_directory,
+                    datapoint['prefix'],
+                    datapoint['suffix'],
+                    extension
+                )
+            if strategy == "chunk":
+                chunks = chunk_retrieve_with_rerank(
                     root_directory,
                     datapoint['prefix'],
                     datapoint['suffix'],
