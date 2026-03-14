@@ -5,6 +5,9 @@ import argparse
 
 from rank_bm25 import BM25Okapi
 
+from bm25_chunk import find_bm25_chunk
+from bm25_dense_reranker import retrieve_with_rerank
+
 argparser = argparse.ArgumentParser()
 # Parameters for context collection strategy
 argparser.add_argument("--stage", type=str, default="practice", help="Stage of the project")
@@ -184,6 +187,8 @@ with jsonlines.open(completion_points_file, 'r') as reader:
                 # If no recent files match our filtering criteria, select a random file instead
                 if file_name is None:
                     file_name = find_random_file(root_directory)
+            elif strategy == "rerank":
+                file_name = retrieve_with_rerank(root_directory, datapoint['prefix'], datapoint['suffix'], extension)
             else:
                 raise ValueError(f"Unknown strategy: {strategy}")
 
