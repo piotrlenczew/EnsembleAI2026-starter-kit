@@ -54,17 +54,22 @@ def chunk_retrieve_with_rerank(root_dir: str, prefix: str, suffix: str, extensio
 
     bm25 = BM25Okapi(corpus_bm25_tokens)
     bm25_scores = bm25.get_scores(prepare_bm25_str(query))
-    bm25_top_k = min(20, len(corpus_texts))
+    bm25_top_k = min(10, len(corpus_texts))
     bm25_idx = np.argsort(bm25_scores)[::-1][:bm25_top_k]
 
     # -----------------------
     # Dense retrieval
     # -----------------------
 
-    query_emb = dense_model.encode(query, normalize_embeddings=True)
-    doc_embs = dense_model.encode(corpus_texts, normalize_embeddings=True)
+    # For the query
+    query_text = f"query: {prefix} {suffix}".lower()
+    query_emb = dense_model.encode(query_text, normalize_embeddings=True)
+
+    # For the corpus
+    safe_corpus = [f"passage: {doc}" for doc in corpus_texts]
+    doc_embs = dense_model.encode(safe_corpus, normalize_embeddings=True)
     dense_scores = np.dot(doc_embs, query_emb)
-    dense_top_k = min(20, len(corpus_texts))
+    dense_top_k = min(10, len(corpus_texts))
     dense_idx = np.argsort(dense_scores)[::-1][:dense_top_k]
 
     # -----------------------
