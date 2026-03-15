@@ -5,8 +5,8 @@ from sentence_transformers import SentenceTransformer, CrossEncoder
 
 from chunkers.ast_chunker import ast_chunker
 
-dense_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
-reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+dense_model = SentenceTransformer("intfloat/e5-base-v2")
+reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-12-v2")
 
 def chunk_retrieve_with_rerank(root_dir: str, prefix: str, suffix: str, extension: str, min_lines: int = 10, top_k: int = 5) -> list[str]:
     """
