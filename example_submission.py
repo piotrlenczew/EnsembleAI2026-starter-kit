@@ -14,8 +14,8 @@ ENDPOINT = "task2"
 API_TOKEN = os.getenv("TEAM_TOKEN")
 SERVER_URL = os.getenv("SERVER_URL")
 # Change accordingly
-JSONL_FILE = "predictions/python-test-chunk.jsonl"
-STAGE = "public"
+JSONL_FILE = "predictions/python-practice-chunk.jsonl"
+STAGE = "practice"
 
 def main():
     if not API_TOKEN:
