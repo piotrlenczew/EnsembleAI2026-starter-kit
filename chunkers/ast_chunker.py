@@ -1,12 +1,6 @@
 import ast
 
 def ast_chunker(content: str):
-    """
-    Chunk Python code by AST nodes:
-    - functions
-    - classes
-    - methods
-    """
 
     chunks = []
     lines = content.split("\n")
@@ -14,21 +8,49 @@ def ast_chunker(content: str):
     try:
         tree = ast.parse(content)
     except SyntaxError:
-        # fallback to whole file if parsing fails
         return [content]
 
-    for node in ast.walk(tree):
+    # -------- HEADER CHUNK --------
+    first_def_line = None
 
+    for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            first_def_line = node.lineno
+            break
 
-            if hasattr(node, "lineno") and hasattr(node, "end_lineno"):
-                start = node.lineno - 1
-                end = node.end_lineno
+    if first_def_line:
+        header = "\n".join(lines[:first_def_line-1])
+        if header.strip():
+            chunks.append(header)
 
-                chunk = "\n".join(lines[start:end])
-                chunks.append(chunk)
+    # -------- MAIN CHUNKS --------
+    for node in tree.body:
 
-    # fallback if nothing detected
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+
+            start = node.lineno - 1
+            end = node.end_lineno
+
+            chunk = "\n".join(lines[start:end])
+            chunks.append(chunk)
+
+        elif isinstance(node, ast.ClassDef):
+
+            # chunk the class itself
+            start = node.lineno - 1
+            end = node.end_lineno
+            class_chunk = "\n".join(lines[start:end])
+            chunks.append(class_chunk)
+
+            # chunk methods separately
+            for child in node.body:
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    start = child.lineno - 1
+                    end = child.end_lineno
+
+                    method_chunk = "\n".join(lines[start:end])
+                    chunks.append(method_chunk)
+
     if not chunks:
         return [content]
 
