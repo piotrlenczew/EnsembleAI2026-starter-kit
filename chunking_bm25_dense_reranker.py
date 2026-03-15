@@ -1,17 +1,16 @@
 import os
 import numpy as np
 from rank_bm25 import BM25Okapi
-from sentence_transformers import SentenceTransformer, CrossEncoder
+from sentence_transformers import SentenceTransformer
 
 from chunkers.ast_chunker import ast_chunker
 
-dense_model = SentenceTransformer("intfloat/e5-base-v2")
-reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-12-v2")
+dense_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
 
-def chunk_retrieve_with_rerank(root_dir: str, prefix: str, suffix: str, extension: str, min_lines: int = 10, top_k: int = 5) -> list[str]:
+def chunk_retrieve(root_dir: str, prefix: str, suffix: str, extension: str, min_lines: int = 10, top_k: int = 15) -> list[dict]:
     """
-    Hybrid retrieval:
-    chunk -> BM25 + Dense Retriever -> merge -> Cross-Encoder reranker
+    Hybrid retrieval without reranking:
+    chunk -> BM25 + Dense Retriever -> merge -> return top_k
     """
 
     def prepare_bm25_str(s: str) -> list[str]:
@@ -21,6 +20,9 @@ def chunk_retrieve_with_rerank(root_dir: str, prefix: str, suffix: str, extensio
     corpus_texts = []
     file_names = []
 
+    # -----------------------
+    # Build corpus
+    # -----------------------
     for dirpath, _, filenames in os.walk(root_dir):
         for filename in filenames:
             if filename.endswith(extension):
@@ -35,63 +37,40 @@ def chunk_retrieve_with_rerank(root_dir: str, prefix: str, suffix: str, extensio
                                 corpus_texts.append(chunk)
                                 corpus_bm25_tokens.append(prepare_bm25_str(chunk))
                                 file_names.append(file_path)
-
                 except Exception:
                     pass
 
     if not corpus_texts:
         return []
 
-    # -----------------------
-    # Build query
-    # -----------------------
-
     query = (prefix + " " + suffix).lower()
+    query_text = f"query: {prefix} {suffix}".lower()
 
     # -----------------------
     # BM25 retrieval
     # -----------------------
-
     bm25 = BM25Okapi(corpus_bm25_tokens)
     bm25_scores = bm25.get_scores(prepare_bm25_str(query))
-    bm25_top_k = min(10, len(corpus_texts))
-    bm25_idx = np.argsort(bm25_scores)[::-1][:bm25_top_k]
 
     # -----------------------
     # Dense retrieval
     # -----------------------
-
-    # For the query
-    query_text = f"query: {prefix} {suffix}".lower()
-    query_emb = dense_model.encode(query_text, normalize_embeddings=True)
-
-    # For the corpus
     safe_corpus = [f"passage: {doc}" for doc in corpus_texts]
+    query_emb = dense_model.encode(query_text, normalize_embeddings=True)
     doc_embs = dense_model.encode(safe_corpus, normalize_embeddings=True)
     dense_scores = np.dot(doc_embs, query_emb)
-    dense_top_k = min(10, len(corpus_texts))
-    dense_idx = np.argsort(dense_scores)[::-1][:dense_top_k]
 
     # -----------------------
-    # Merge candidates
+    # Merge scores (optional: sum or average)
     # -----------------------
-
-    candidate_idx = list(set(bm25_idx) | set(dense_idx))
-    candidates = [corpus_texts[i] for i in candidate_idx]
-    candidate_files = [file_names[i] for i in candidate_idx]
-
-    # -----------------------
-    # Rerank
-    # -----------------------
-
-    pairs = [(query, doc) for doc in candidates]
-    rerank_scores = reranker.predict(pairs)
-    top_indices = np.argsort(rerank_scores)[::-1][:top_k]
+    merged_scores = bm25_scores + dense_scores  # simple sum, can adjust weighting
+    top_indices = np.argsort(merged_scores)[::-1][:top_k]
 
     results = []
     for idx in top_indices:
         results.append({
-            "file": candidate_files[idx],
-            "content": candidates[idx]
+            "file": file_names[idx],
+            "content": corpus_texts[idx]
         })
+
     return results

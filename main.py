@@ -6,7 +6,7 @@ import argparse
 from rank_bm25 import BM25Okapi
 
 from bm25_dense_reranker import retrieve_with_rerank
-from chunking_bm25_dense_reranker import chunk_retrieve_with_rerank
+from chunking_bm25_dense_reranker import chunk_retrieve
 from filter_chunk_bm25_dense_reranker import filter_chunk_retrieve_with_rerank
 
 
@@ -81,7 +81,7 @@ with jsonlines.open(completion_points_file, 'r') as reader:
                     extension
                 )
             elif strategy == "chunk":
-                chunks = chunk_retrieve_with_rerank(
+                chunks = chunk_retrieve(
                     root_directory,
                     datapoint['prefix'],
                     datapoint['suffix'],
