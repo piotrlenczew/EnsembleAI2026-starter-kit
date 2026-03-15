@@ -8,6 +8,7 @@ from rank_bm25 import BM25Okapi
 from bm25_dense_reranker import retrieve_with_rerank
 from chunking_bm25_dense_reranker import chunk_retrieve_with_rerank
 
+
 argparser = argparse.ArgumentParser()
 # Parameters for context collection strategy
 argparser.add_argument("--stage", type=str, default="practice", help="Stage of the project")
