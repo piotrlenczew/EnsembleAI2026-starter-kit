@@ -1,66 +1,84 @@
 import ast
 
-def ast_chunker(content: str):
+def ast_chunker(content: str, max_chars: int = 1500):
+    """
+    AST-based chunker that:
+    1. Prepends class signatures to methods for context.
+    2. Merges small adjacent nodes to avoid 'micro-chunks'.
+    3. Falls back to basic chunking on syntax errors.
+    """
     chunks = []
     lines = content.split("\n")
 
     try:
         tree = ast.parse(content)
     except (SyntaxError, IndentationError):
-        # Fallback to basic_chunker if AST fails
         from chunkers.basic_chunker import basic_chunker
         return basic_chunker(content)
 
-    # Helper to get source from lines safely
-    def get_lines(start_node, end_node):
-        return "\n".join(lines[start_node.lineno - 1 : end_node.end_lineno])
+    def get_source(node):
+        # end_lineno is 3.8+, using a safe fallback just in case
+        end = getattr(node, 'end_lineno', node.lineno)
+        return "\n".join(lines[node.lineno - 1 : end])
 
-    # 1. Handle Module-level "Header" (Imports, Constants, Module Docstrings)
-    # Find where the first major block (Class/Function) starts
-    first_major_node = next((n for n in tree.body if isinstance(n, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))), None)
-    
-    if first_major_node and first_major_node.lineno > 1:
-        header = "\n".join(lines[:first_major_node.lineno - 1]).strip()
-        if header:
-            chunks.append(header)
-    elif not first_major_node:
-        # File is just flat code, return as is (or let basic_chunker handle it)
-        from chunkers.basic_chunker import basic_chunker
-        return basic_chunker(content)
+    def add_chunk(text):
+        if text.strip():
+            chunks.append(text.strip())
 
-    # 2. Iterate through Top-Level Nodes
+    # --- 1. Handle Module Header ---
+    first_major = next((n for n in tree.body if isinstance(n, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))), None)
+    if first_major and first_major.lineno > 1:
+        add_chunk("\n".join(lines[:first_major.lineno - 1]))
+
+    # --- 2. Process Body with Grouping ---
+    current_group = []
+    current_group_len = 0
+
     for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            # Top-level function: Add as one chunk
-            chunks.append(get_lines(node, node))
-
-        elif isinstance(node, ast.ClassDef):
-            # CLASS HANDLING: We want to avoid duplicating method code
-            # First, extract just the "Header" of the class (Definition + Class variables)
-            # We find the first method and take everything before it.
-            first_method = next((n for n in node.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))), None)
+        node_text = ""
+        
+        if isinstance(node, ast.ClassDef):
+            # Flush current group before starting a class
+            if current_group:
+                add_chunk("\n\n".join(current_group))
+                current_group, current_group_len = [], 0
             
-            if first_method:
-                class_header = "\n".join(lines[node.lineno - 1 : first_method.lineno - 1]).strip()
-                if class_header:
-                    chunks.append(class_header)
-                
-                # Now add each method as its own chunk
-                for child in node.body:
-                    if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        chunks.append(get_lines(child, child))
-                    elif isinstance(child, (ast.Assign, ast.AnnAssign)) and child.lineno >= first_method.lineno:
-                        # Catch class variables that might appear after/between methods
-                        chunks.append(get_lines(child, child))
+            # Get class signature (everything before first method/nested class)
+            first_child = next((n for n in node.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))), None)
+            if first_child:
+                class_sig = "\n".join(lines[node.lineno - 1 : first_child.lineno - 1]).strip()
             else:
-                # Class has no methods (e.g., a simple Data Class or Exception)
-                chunks.append(get_lines(node, node))
+                class_sig = get_source(node).strip()
+            
+            # Process children: prepend class signature to methods
+            for child in node.body:
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    method_src = get_source(child)
+                    # Prepend class signature + '...' to show it's a snippet
+                    add_chunk(f"{class_sig}\n    ...\n    {method_src}")
+                else:
+                    # Handle class-level variables/docstrings that aren't methods
+                    child_src = get_source(child)
+                    if len(child_src) > 20:
+                         add_chunk(f"{class_sig}\n    {child_src}")
+            continue
 
-        elif isinstance(node, (ast.Assign, ast.AnnAssign, ast.Expr)):
-            # Logic at module level that isn't a function/class
-            chunk = get_lines(node, node).strip()
-            if chunk:
-                chunks.append(chunk)
+        # For Top-level functions or standalone logic
+        node_text = get_source(node)
+        
+        # Grouping Logic: if the node is small, bundle it with others
+        if len(node_text) + current_group_len < max_chars:
+            current_group.append(node_text)
+            current_group_len += len(node_text)
+        else:
+            # Flush existing group and start new one
+            if current_group:
+                add_chunk("\n\n".join(current_group))
+            current_group = [node_text]
+            current_group_len = len(node_text)
 
-    # Final cleanup: Remove empty strings or very small fragments
-    return [c for c in chunks if len(c.strip()) > 20]
+    # Final flush
+    if current_group:
+        add_chunk("\n\n".join(current_group))
+
+    return chunks
